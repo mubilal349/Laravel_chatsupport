@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>AI Chat Assistant</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
     <style>
         * {
             margin: 0;
@@ -274,8 +275,87 @@
         
         .message-text {
             word-wrap: break-word;
-            line-height: 1.4;
+            line-height: 1.5;
             font-size: 14px;
+        }
+        
+        /* Markdown styling */
+        .message-text h1, .message-text h2, .message-text h3, .message-text h4, .message-text h5, .message-text h6 {
+            margin-top: 16px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .message-text h1 { font-size: 1.5em; }
+        .message-text h2 { font-size: 1.3em; }
+        .message-text h3 { font-size: 1.2em; }
+        
+        .message-text p {
+            margin-bottom: 12px;
+        }
+        
+        .message-text ul, .message-text ol {
+            margin-bottom: 12px;
+            padding-left: 24px;
+        }
+        
+        .message-text li {
+            margin-bottom: 4px;
+        }
+        
+        .message-text code {
+            background-color: rgba(110, 118, 129, 0.4);
+            color: #e6edf3;
+            padding: 0.2em 0.4em;
+            border-radius: 6px;
+            font-size: 0.9em;
+        }
+        
+        .message-text pre {
+            background-color: #161b22;
+            border-radius: 8px;
+            padding: 16px;
+            overflow-x: auto;
+            margin-bottom: 16px;
+        }
+        
+        .message-text pre code {
+            background-color: transparent;
+            padding: 0;
+            font-size: 0.9em;
+        }
+        
+        .message-text blockquote {
+            border-left: 4px solid #7c3aed;
+            padding-left: 16px;
+            margin: 16px 0;
+            color: #a0a0a0;
+        }
+        
+        .message-text table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 16px;
+        }
+        
+        .message-text th, .message-text td {
+            border: 1px solid #444;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        
+        .message-text th {
+            background-color: #2d2d2d;
+            font-weight: 600;
+        }
+        
+        .message-text a {
+            color: #a78bfa;
+            text-decoration: none;
+        }
+        
+        .message-text a:hover {
+            text-decoration: underline;
         }
         
         .message-time {
@@ -710,10 +790,13 @@
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
     <script>
         // Chat management
         let currentChatId = null;
         let chats = {};
+        let isTyping = false;
         
         // Initialize the app
         document.addEventListener('DOMContentLoaded', function() {
@@ -908,17 +991,28 @@
                 
                 const avatarIcon = msg.sender === 'user' ? 'fa-user' : 'fa-robot';
                 
+                // Parse markdown for AI messages
+                let messageText = msg.text;
+                if (msg.sender === 'ai') {
+                    messageText = marked.parse(msg.text);
+                }
+                
                 messageElement.innerHTML = `
                     <div class="message-avatar">
                         <i class="fas ${avatarIcon}"></i>
                     </div>
                     <div class="message-content">
-                        <div class="message-text">${msg.text}</div>
+                        <div class="message-text">${messageText}</div>
                         <div class="message-time">${msg.time}</div>
                     </div>
                 `;
                 
                 chatBox.appendChild(messageElement);
+            });
+            
+            // Highlight code blocks
+            document.querySelectorAll('pre code').forEach((block) => {
+                hljs.highlightBlock(block);
             });
             
             // Scroll to the bottom
@@ -934,6 +1028,8 @@
         
         // Send a message
         function sendMessage() {
+            if (isTyping) return;
+            
             if (!currentChatId) {
                 createNewChat();
                 // Wait for the chat to be created before sending the message
@@ -990,32 +1086,92 @@
                 // Hide typing indicator
                 typingIndicator.classList.remove("active");
                 
-                // Add AI response to the current chat
-                const aiMessage = {
-                    sender: 'ai',
-                    text: data.reply,
-                    time: getCurrentTime()
-                };
-                
-                chats[currentChatId].messages.push(aiMessage);
-                saveChatsToStorage();
-                renderMessages();
+                // Add AI response to the current chat with typing effect
+                addAIResponse(data.reply);
             })
             .catch(error => {
                 console.error('Error:', error);
                 typingIndicator.classList.remove("active");
                 
                 // Add error message to the current chat
-                const errorMessage = {
-                    sender: 'ai',
-                    text: 'Sorry, I encountered an error. Please try again later.',
-                    time: getCurrentTime()
-                };
-                
-                chats[currentChatId].messages.push(errorMessage);
-                saveChatsToStorage();
-                renderMessages();
+                addAIResponse('Sorry, I encountered an error. Please try again later.');
             });
+        }
+        
+        // Add AI response with typing effect
+        function addAIResponse(response) {
+            isTyping = true;
+            
+            // Create AI message element
+            const chatBox = document.getElementById("chat-box");
+            const aiMessageElement = document.createElement("div");
+            aiMessageElement.className = "message ai";
+            
+            aiMessageElement.innerHTML = `
+                <div class="message-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="message-content">
+                    <div class="message-text"></div>
+                    <div class="message-time">${getCurrentTime()}</div>
+                </div>
+            `;
+            
+            chatBox.appendChild(aiMessageElement);
+            
+            const messageTextElement = aiMessageElement.querySelector('.message-text');
+            
+            // Parse the markdown response
+            const parsedResponse = marked.parse(response);
+            
+            // Simulate typing effect
+            let index = 0;
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = parsedResponse;
+            
+            // Extract text content for typing effect
+            const textContent = tempDiv.textContent || tempDiv.innerText || '';
+            
+            // Create a function to type the response
+            function typeResponse() {
+                if (index < textContent.length) {
+                    // Add the next character
+                    messageTextElement.textContent = textContent.substring(0, index + 1);
+                    
+                    // Scroll to bottom as we type
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                    
+                    // Continue typing
+                    index++;
+                    setTimeout(typeResponse, 10); // Adjust typing speed here
+                } else {
+                    // Typing is complete, render the full markdown
+                    messageTextElement.innerHTML = parsedResponse;
+                    
+                    // Highlight code blocks
+                    document.querySelectorAll('pre code').forEach((block) => {
+                        hljs.highlightBlock(block);
+                    });
+                    
+                    // Save the message to the chat
+                    const aiMessage = {
+                        sender: 'ai',
+                        text: response,
+                        time: getCurrentTime()
+                    };
+                    
+                    chats[currentChatId].messages.push(aiMessage);
+                    saveChatsToStorage();
+                    
+                    // Final scroll to bottom
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                    
+                    isTyping = false;
+                }
+            }
+            
+            // Start typing effect
+            typeResponse();
         }
         
         // Get current time in a readable format
