@@ -84,6 +84,8 @@ Authorization: Bearer session_token_here
 Response:
 
 ### FOLDER STRUCTURE ###
+
+
 ai-chat-app/
 ├── app/
 │   ├── Controllers/
@@ -156,4 +158,5 @@ Create a new issue with detailed information
 
 
 ###################### RUN THE PHP ################################
+
 php artisan serve
