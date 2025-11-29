@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\ProjectController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -11,6 +12,8 @@ Route::get('/', function () {
 Route::get('/chat', [ChatController::class, 'index']);
 Route::post('/chat/send', [ChatController::class, 'send']);
 
+
+Route::get('/projects', [ProjectController::class, 'index']);
 
 // Route::get('/test-openai', function() {
 //     $client = OpenAI::client(config('services.openai.key'));
